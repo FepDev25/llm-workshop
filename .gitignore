@@ -1,0 +1,173 @@
+# ===== Python =====
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# UV (package manager)
+.uv/
+uv.lock
+
+# Poetry
+poetry.lock
+.poetry/
+
+# Pipenv
+Pipfile.lock
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# ===== Jupyter Notebooks =====
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+*.ipynb_checkpoints
+
+# ===== LLM / Generative AI Specific =====
+# API Keys y Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+credentials/
+
+
+# Vectorstores / Embeddings
+vectorstore/
+chroma/
+faiss/
+*.index
+*.pkl
+
+# Datasets grandes
+data/raw/
+data/processed/
+datasets/
+*.csv
+*.json
+*.jsonl
+*.parquet
+!**/sample*.csv
+!**/example*.json
+
+# Logs y outputs
+logs/
+*.log
+outputs/
+runs/
+wandb/
+mlruns/
+.mlflow/
+
+# LangChain / LangSmith
+.langchain/
+.langsmith/
+
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ===== Sistema Operativo =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===== Otros =====
+# Archivos temporales
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Backups
+*.bak
+*.backup
+
+# Cache y temporales de herramientas
+.cache/
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Documentos de experimentos personales
+scratch/
+experiments/
+playground/
+temp/
+tmp/
+
+# Docker (si usas containers)
+docker-compose.override.yml
+.dockerignore
+
+# Terraform / Infrastructure (si despliegas)
+*.tfstate
+*.tfstate.*
+.terraform/
