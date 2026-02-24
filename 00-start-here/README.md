@@ -18,6 +18,8 @@ Un agente simple que:
 
 ## Setup
 
+Desde la raiz del repositorio:
+
 ```bash
 # Instalar dependencias
 uv sync
