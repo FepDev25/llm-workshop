@@ -14,6 +14,7 @@ dependencies = [
     "ollama>=0.6.1",
     "pillow>=12.0.0",
     "piper-tts>=1.4.1",
+    "pytest>=9.0.2",
     "safetensors>=0.7.0",
     "scikit-learn>=1.8.0",
     "scipy>=1.17.1",

@@ -77,6 +77,7 @@ credentials/
 # Vectorstores / Embeddings
 vectorstore/
 chroma/
+chroma_db/
 faiss/
 *.index
 *.pkl
@@ -84,6 +85,7 @@ faiss/
 # Datasets grandes
 data/raw/
 data/processed/
+data/sample_docs/
 datasets/
 *.csv
 *.json
