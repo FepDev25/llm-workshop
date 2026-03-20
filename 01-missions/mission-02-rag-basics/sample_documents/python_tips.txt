@@ -1,0 +1,36 @@
+# Consejos de Python
+
+Python es un lenguaje de programación versátil y poderoso.
+
+## List Comprehensions
+Las list comprehensions son una forma concisa de crear listas.
+En lugar de escribir un bucle for, puedes hacerlo en una línea.
+Ejemplo: [x for x in range(10) if x % 2 == 0]
+
+## Manejo de Excepciones
+Siempre es buena práctica usar try/except para manejar errores.
+Especialmente cuando trabajas con archivos o APIs externas.
+
+## Virtual Environments
+Usa entornos virtuales para aislar las dependencias de tus proyectos.
+UV es una herramienta moderna y rápida para manejar paquetes en Python.
+
+## Type Hints
+Añadir anotaciones de tipo hace tu código más legible y mantenible.
+Python no las enforcea en runtime, pero herramientas como mypy sí.
+
+## Debugging
+Usa `pdb` o breakpoints para depurar código complejo.
+En Python moderno puedes usar `breakpoint()` directamente.
+
+## Generadores
+Los generadores (yield) son eficientes para manejar grandes volúmenes de datos.
+No cargan todo en memoria, sino que van produciendo valores uno a uno.
+
+## Decoradores
+Los decoradores permiten modificar el comportamiento de funciones.
+Son útiles para logging, caching, autenticación, etc.
+
+## Testing
+Escribe tests desde el principio. Usa pytest para testing avanzado.
+Los tests te dan confianza para refactorizar código.
