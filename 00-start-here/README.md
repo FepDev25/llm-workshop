@@ -9,13 +9,6 @@ Un agente simple que:
 2. Decide si necesita usar la calculadora
 3. Ejecuta el calculo y responde
 
-## Requisitos
-
-- Ollama instalado
-- Python 3.9+
-- uv instalado
-- Modelos: llama3.1
-
 ## Setup
 
 Desde la raiz del repositorio:
@@ -32,67 +25,6 @@ ollama list
 
 ```bash
 uv run hello-agent.py
-```
-
-## Ejemplo de uso
-
-```
-============================================================
-HELLO AGENT - Primer agente con Ollama
-============================================================
-
-Modelo: llama3.1 (local)
-Tool: calculator
-
-Comandos: 'salir' | 'limpiar'
-Ejemplos: 
-'Cuánto es 34 * 21?'
-'Dime los paises de América del Sur'
-
-============================================================
-
-Agente listo
-
-Tú: Dime los paises de América del Sur
-Pensando...
-
-Agente: Aquí te presento los países que se encuentran en la región de América del Sur:
-
-1. Argentina
-2. Bolivia
-3. Brasil
-4. Chile
-5. Colombia
-6. Ecuador
-7. Guyana
-8. Paraguay
-9. Perú
-10. Surinam
-11. Uruguay
-12. Venezuela
-
-Es importante destacar que la región de América del Sur también incluye a las islas del Caribe, como Trinidad y Tobago y Aruba.
-
-Tú: limpiar
-Conversación reiniciada
-
-Tú: cuánto es 45 - 12
-Pensando...
-Calculando: 45 - 12
-Resultado: 33
-
-Agente: La respuesta es 33.
-
-Tú: cuánto es 12 * 89
-Pensando...
-Calculando: 12 * 89
-Resultado: 1068
-
-Agente: La respuesta es 1068.
-
-Tú: salir
-
-Adios...
 ```
 
 ## Como funciona

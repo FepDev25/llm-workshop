@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""
-Hello Agent - Primer agente con Ollama
-Este agente usa tool calling simple y directo con la librería ollama nativa.
-"""
+# Hello Agent: Primer agente con Ollama
+# Este agente usa tool calling simple y directo con la librería ollama nativa.
 
 import ollama
-
 
 # evalua expresiones matematicas de forma segura
 def calculator(expression: str) -> str:
@@ -100,15 +97,15 @@ Cuando recibas [TOOL_RESULT], usa ese valor para responder directamente al usuar
 
 
 def main():
-    print("\n" + "=" * 60)
+    print("\n" + "*" * 60)
     print("HELLO AGENT - Primer agente con Ollama")
-    print("=" * 60)
+    print("*" * 60)
     print("\nModelo: llama3.1 (local)")
     print("Tool: calculator")
     print("\nComandos: 'salir' | 'limpiar'")
     print("Ejemplos: \n'Cuánto es 34 * 21?'")
     print("'Dime los paises de América del Sur'\n")
-    print("=" * 60 + "\n")
+    print("*" * 60 + "\n")
 
     agent = SimpleAgent()
     print("Agente listo\n")
