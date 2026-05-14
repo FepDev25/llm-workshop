@@ -239,7 +239,78 @@ sudo journalctl -u openclaw -f
 
 ---
 
-## 6. Web search: Tavily
+## 6. Memoria semántica: GitHub Copilot embeddings
+
+OpenClaw usa embeddings para hacer búsqueda semántica en los archivos de memoria del agente (`MEMORY.md`, `memory/*.md`). Sin esto el agente empieza de cero en cada sesión y no puede recuperar contexto de conversaciones anteriores.
+
+### Por qué GitHub Copilot y no otras opciones
+
+| Opción | Ventaja | Desventaja |
+|---|---|---|
+| `github-copilot` | Sin costo extra (Student Pack), sin descarga | Requiere internet |
+| `local` | Offline, sin APIs | Descarga ~600MB, consume CPU del Celeron |
+| `gemini` | — | Cuota limitada, puede fallar con key expirada |
+| `openai` | Buena calidad | Cuesta dinero |
+
+Para este setup se usa **GitHub Copilot** por estar incluido en el Student Pack.
+
+### Configurar GitHub Copilot en OpenClaw
+
+```bash
+sudo su - openclaw_user
+openclaw onboard --auth-choice github-copilot
+```
+
+El wizard abre el flujo OAuth de GitHub:
+1. Te muestra una URL (`https://github.com/login/device`) y un código de 9 caracteres
+2. Abres la URL en el navegador, ingresas el código y autorizas con tu cuenta de GitHub
+3. **El código expira en 15 minutos** — hacerlo de inmediato
+4. Config handling → `Use existing values`
+5. Select channel → `Skip for now` (Telegram ya está configurado)
+
+**IMPORTANTE:** el onboarding cambia el modelo primario a `github-copilot/claude-opus-4.7` automáticamente. Hay que restaurarlo después:
+
+```bash
+openclaw config set agents.defaults.model.primary "opencode-go/kimi-k2.6"
+```
+
+### Configurar memory search para usar Copilot
+
+```bash
+openclaw config set agents.defaults.memorySearch '{"provider": "github-copilot"}' --strict-json
+exit
+sudo systemctl restart openclaw
+```
+
+### Verificar que funciona
+
+Desde Telegram:
+```
+¿Qué recuerdas de mí?
+```
+
+Si responde sin errores de Gemini o "database is not open", está funcionando. La primera vez devuelve 0 resultados porque la base de datos está vacía — es normal.
+
+### Kickstarter de memoria
+
+Para que el agente tenga contexto base desde el inicio, guardar un perfil manualmente:
+
+```
+Guarda esto en memoria: [tu nombre], estudiante de CS último ciclo, usuario de Arch Linux como cliente y Debian Trixie bare-metal como servidor. Corro OpenClaw 2026.5.7 con Kimi K2.6 como modelo primario y Tavily para web search. El servidor es un Celeron con Jellyfin y medios en /srv/.
+```
+
+El agente indexa el texto automáticamente y lo recupera en sesiones futuras con `memory_search`.
+
+### Modelo de embeddings resultante
+
+- **Provider:** `github-copilot`
+- **Modelo:** `text-embedding-3-small`
+- **Backend:** SQLite local (`~/.openclaw/workspace/`)
+- **Sin dependencia de Gemini**
+
+---
+
+## 7. Web search: Tavily
 
 OpenClaw soporta múltiples providers de búsqueda web. Para este setup se eligió **Tavily** (diseñado para agentes LLM) sobre DuckDuckGo (experimental, keyless) y Gemini (cuota limitada, puede generar costo).
 
@@ -269,7 +340,7 @@ Debe responder mencionando `web_search` y `web_fetch`.
 
 ---
 
-## 7. Migración entre versiones: qué hacer cuando hay breaking changes
+## 8. Migración entre versiones: qué hacer cuando hay breaking changes
 
 Al actualizar de 2026.3.13 a 2026.5.7 hubo varios breaking changes en el schema de `openclaw.json`. El flujo correcto para futuras actualizaciones:
 
@@ -303,7 +374,7 @@ En 2026.5.7 con el gateway corriendo como servicio de sistema (no de usuario), e
 
 ---
 
-## 8. Capacidades del agente con OpenCode Go
+## 9. Capacidades del agente con OpenCode Go
 
 El agente entiende su propio stack de modelos y puede orquestarlos. Desde Telegram:
 
@@ -322,7 +393,7 @@ Uso recomendado por modelo:
 
 ---
 
-## 9. Permisos para medios de Jellyfin
+## 10. Permisos para medios de Jellyfin
 
 El servidor también corre **Jellyfin** con medios en `/srv/`. Para que `openclaw_user` pueda operar sobre esas carpetas creé un grupo compartido:
 
@@ -343,7 +414,7 @@ sudo systemctl restart openclaw
 
 ---
 
-## 10. Cheat sheet de comandos
+## 11. Cheat sheet de comandos
 
 ### Gestión del servicio (usuario principal)
 
@@ -394,6 +465,13 @@ openclaw plugins disable tavily
 # Re-autenticar OpenCode Go si expira
 openclaw onboard --auth-choice opencode-go
 
+# Re-autenticar GitHub Copilot si expira (OAuth, abre el navegador)
+openclaw onboard --auth-choice github-copilot
+# → Config handling: Use existing values
+# → Channel: Skip for now
+# → Después restaurar modelo primario:
+openclaw config set agents.defaults.model.primary "opencode-go/kimi-k2.6"
+
 # Aprobar pairing de nuevo usuario en Telegram
 openclaw pairing approve telegram [CODIGO]
 ```
@@ -418,10 +496,10 @@ openclaw pairing approve telegram [CODIGO]
 
 ---
 
-## 11. Pendientes
+## 12. Pendientes
 
 - [ ] Configurar failover en cadena en `openclaw.json`: Kimi K2.6 → MiniMax M2.7 → DeepSeek V4 Flash
-- [ ] Explorar skills útiles: `nano-pdf`, `summarize`, `session-logs` (requiere instalar `jq` y `rg`)
+- [ ] Skills: instalar `nano-pdf` (requiere `uv`), `session-logs` (requiere `jq` y `ripgrep`), `summarize`
 - [ ] Verificar permisos de `/srv/` para `openclaw_user` con el grupo `media`
 - [ ] Navidrome: aplicar configuración de Cloudflare Tunnel si se quiere acceso externo (`navidrome.[mi-dominio].app → http://localhost:4533`)
 - [ ] Hardening SSH en Debian: desactivar `PasswordAuthentication` ahora que la clave está copiada
