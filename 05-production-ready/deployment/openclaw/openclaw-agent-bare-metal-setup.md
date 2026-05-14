@@ -1,9 +1,10 @@
 # Cómo desplegué OpenClaw en un servidor Debian bare-metal
 
 **Entorno:** Debian Trixie — bare-metal Celeron
-**Versión de OpenClaw:** 2026.3.13
-**Modelo de IA:** OpenCode Go (Kimi K2.5 como primario)
+**Versión de OpenClaw:** 2026.5.7
+**Modelo de IA:** OpenCode Go (Kimi K2.6 como primario)
 **Interfaz principal:** Telegram
+**Última actualización:** Mayo 2026 — migración desde 2026.3.13
 
 ---
 
@@ -52,7 +53,7 @@ npm config set prefix '~/.npm-global'
 echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
 source ~/.bashrc
 
-# Instalar OpenClaw
+# Instalar OpenClaw (siempre la última versión)
 npm install -g openclaw@latest
 ```
 
@@ -88,12 +89,20 @@ EnvironmentFile=/home/openclaw_user/.openclaw/.env
 ExecStart=/home/openclaw_user/.npm-global/bin/openclaw gateway --force
 Restart=on-failure
 RestartSec=10
+# Optimizaciones para hardware limitado (Celeron/Pi/VM) — recomendado por openclaw doctor
+Environment=NODE_COMPILE_CACHE=/var/tmp/openclaw-compile-cache
+Environment=OPENCLAW_NO_RESPAWN=1
 
 [Install]
 WantedBy=multi-user.target
 ```
 
+Crear el directorio de cache y aplicar:
+
 ```bash
+sudo mkdir -p /var/tmp/openclaw-compile-cache
+sudo chown openclaw_user:openclaw_user /var/tmp/openclaw-compile-cache
+
 sudo systemctl daemon-reload
 sudo systemctl enable openclaw
 sudo systemctl start openclaw
@@ -130,36 +139,45 @@ Por defecto, OpenClaw ignora mensajes directos por seguridad. Al escribirle "Hol
 sudo -u openclaw_user /home/openclaw_user/.npm-global/bin/openclaw pairing approve telegram [EL-CODIGO]
 ```
 
+### Command owner (importante para seguridad)
+
+El pairing solo permite hablar con el bot. Para poder ejecutar comandos privilegiados desde Telegram (`/config`, `/diagnostics`, aprobaciones de exec), hay que configurar el owner. Obtén tu Telegram ID hablándole a `@userinfobot`:
+
+```bash
+# Como openclaw_user
+openclaw config set commands.ownerAllowFrom '["telegram:TU_ID_NUMERICO"]'
+exit
+sudo systemctl restart openclaw
+```
+
+Sin esto, nadie tiene privilegios de owner aunque haya hecho pairing.
+
 ---
 
-## 5. Migración a OpenCode Go (Kimi K2.5)
+## 5. OpenCode Go: configuración del provider y modelos
 
-OpenCode Go es una suscripción de $5 el primer mes y $10/mes que da acceso a modelos open source de calidad optimizados para coding. Con el plan base tienes disponibles:
+OpenCode Go es una suscripción que da acceso a modelos open source de calidad. El catálogo completo disponible en 2026.5.7:
 
 | Model ref | Modelo | Fortaleza |
 |---|---|---|
+| `opencode-go/kimi-k2.6` | Kimi K2.6 | Frontend, contexto 256K, multimodal, **3x límites vs K2.5** |
 | `opencode-go/kimi-k2.5` | Kimi K2.5 | Frontend, contexto 256K, multimodal |
-| `opencode-go/minimax-m2.5` | MiniMax M2.5 | Mejor coding general (SWE-Bench 80.2%), más requests |
+| `opencode-go/minimax-m2.7` | MiniMax M2.7 | Coding general, última generación |
+| `opencode-go/minimax-m2.5` | MiniMax M2.5 | Coding general (SWE-Bench 80.2%) |
+| `opencode-go/glm-5.1` | GLM-5.1 | Razonamiento matemático, última generación |
 | `opencode-go/glm-5` | GLM-5 | Razonamiento matemático |
+| `opencode-go/deepseek-v4-pro` | DeepSeek V4 Pro | Coding avanzado |
+| `opencode-go/deepseek-v4-flash` | DeepSeek V4 Flash | Coding rápido y económico |
+| `opencode-go/mimo-v2-pro` | MiMo V2 Pro | Razonamiento multimodal |
+| `opencode-go/mimo-v2-omni` | MiMo V2 Omni | Multimodal general |
+| `opencode-go/qwen3.6-plus` | Qwen3.6 Plus | Coding y razonamiento |
+| `opencode-go/qwen3.5-plus` | Qwen3.5 Plus | Coding general |
 
 ### Por qué el `.env` va en `~/.openclaw/.env`
 
 OpenClaw tiene un orden de precedencia estricto para variables de entorno. La ubicación correcta para credenciales en un servicio systemd es `~/.openclaw/.env`, **no** `~/.env`. El `EnvironmentFile` del service debe apuntar ahí.
 
-### Proceso de migración
-
-**1. Actualizar el `EnvironmentFile` en el service** (desde el usuario principal):
-
-```bash
-sudo nano /etc/systemd/system/openclaw.service
-```
-
-Verificar que la línea diga:
-```ini
-EnvironmentFile=/home/openclaw_user/.openclaw/.env
-```
-
-**2. Correr el onboarding interactivo de OpenCode Go** (como `openclaw_user`):
+### Onboarding de OpenCode Go
 
 ```bash
 sudo su - openclaw_user
@@ -168,62 +186,143 @@ openclaw onboard --auth-choice opencode-go
 
 El asistente detecta el config existente. Seleccionar:
 - Config handling → `Use existing values`
-- Web search → `Skip for now`
-- Skills → `Skip for now` (se pueden configurar después)
+- Web search → `Skip for now` (se configura por separado)
+- Skills → `Skip for now`
 
-Al terminar el onboarding, la API key queda guardada en el auth store interno de OpenClaw (`~/.local/share/opencode/auth.json`), que es donde el provider `opencode-go` la busca.
+### Agregar todos los modelos al allowlist
 
-**3. Verificar que los modelos tienen auth:**
+**IMPORTANTE:** `agents.defaults.models` actúa como allowlist. Solo los modelos listados ahí son accesibles desde `/model` y sesiones. Hay que agregarlos manualmente al `openclaw.json` ya que el flag `--merge` del CLI puede no estar disponible en todas las versiones:
 
 ```bash
-openclaw models list --provider opencode-go
+nano ~/.openclaw/openclaw.json
 ```
 
-Debe mostrar `yes` en la columna Auth para los 3 modelos. Si alguno muestra `missing`, el onboarding no completó correctamente.
+La sección `agents.defaults.models` debe quedar así:
 
-**4. Setear el modelo primario:**
-
-```bash
-openclaw config set agents.defaults.model.primary "opencode-go/kimi-k2.5"
+```json
+"models": {
+  "opencode-go/kimi-k2.6": { "alias": "Kimi-Pro" },
+  "opencode-go/kimi-k2.5": { "alias": "Kimi" },
+  "opencode-go/glm-5": { "alias": "GLM" },
+  "opencode-go/glm-5.1": { "alias": "GLM-5.1" },
+  "opencode-go/minimax-m2.5": { "alias": "MiniMax" },
+  "opencode-go/minimax-m2.7": { "alias": "MiniMax-Pro" },
+  "opencode-go/deepseek-v4-pro": { "alias": "DeepSeek-Pro" },
+  "opencode-go/deepseek-v4-flash": { "alias": "DeepSeek-Flash" },
+  "opencode-go/mimo-v2-pro": { "alias": "MiMo-Pro" },
+  "opencode-go/mimo-v2-omni": { "alias": "MiMo-Omni" },
+  "opencode-go/qwen3.5-plus": { "alias": "Qwen3.5" },
+  "opencode-go/qwen3.6-plus": { "alias": "Qwen3.6" }
+}
 ```
 
-**5. Reiniciar el servicio** (desde el usuario principal):
+Siempre validar el JSON antes de reiniciar:
 
 ```bash
+cat ~/.openclaw/openclaw.json | python3 -m json.tool > /dev/null && echo "JSON válido"
+```
+
+### Setear el modelo primario
+
+```bash
+openclaw config set agents.defaults.model.primary "opencode-go/kimi-k2.6"
+exit
+sudo systemctl restart openclaw
+```
+
+Verificar en los logs:
+
+```bash
+sudo journalctl -u openclaw -f
+# Debe aparecer: agent model: opencode-go/kimi-k2.6 (thinking=medium, fast=off)
+```
+
+---
+
+## 6. Web search: Tavily
+
+OpenClaw soporta múltiples providers de búsqueda web. Para este setup se eligió **Tavily** (diseñado para agentes LLM) sobre DuckDuckGo (experimental, keyless) y Gemini (cuota limitada, puede generar costo).
+
+> **Nota para estudiantes:** Tavily tiene plan gratuito para estudiantes en tavily.com usando correo universitario. El plan free normal incluye 1,000 créditos/mes, suficiente para uso de agente cotidiano.
+
+Configurar vía wizard:
+
+```bash
+sudo su - openclaw_user
+openclaw configure --section tools
+```
+
+Seleccionar Tavily como provider e ingresar la API key. Después habilitar el plugin explícitamente:
+
+```bash
+openclaw plugins enable tavily
+exit
+sudo systemctl restart openclaw
+```
+
+Verificar que el agente tiene acceso desde Telegram:
+```
+¿Tienes acceso a búsqueda web? ¿Qué herramientas tienes disponibles?
+```
+
+Debe responder mencionando `web_search` y `web_fetch`.
+
+---
+
+## 7. Migración entre versiones: qué hacer cuando hay breaking changes
+
+Al actualizar de 2026.3.13 a 2026.5.7 hubo varios breaking changes en el schema de `openclaw.json`. El flujo correcto para futuras actualizaciones:
+
+```bash
+# 1. Actualizar el paquete
+sudo su - openclaw_user
+npm install -g openclaw@latest
+
+# 2. Si el CLI falla con "Invalid config", correr el doctor ANTES de reiniciar el gateway
+openclaw doctor --fix
+
+# 3. Reiniciar desde el usuario principal
 exit
 sudo systemctl daemon-reload
 sudo systemctl restart openclaw
 ```
 
-**6. Verificar en los logs:**
+### Breaking changes conocidos (2026.3.13 → 2026.5.7)
 
-```bash
-sudo journalctl -u openclaw -f
-```
+- `channels.telegram.streaming` pasó de ser un valor escalar (`"partial"`) a ser un objeto (`{ "mode": "partial" }`). El doctor lo migra automáticamente.
+- `tools.web.search.provider: "gemini"` ya no es válido. Usar `"duckduckgo"`, `"tavily"`, u otro provider del listado actual.
+- El flag `--merge` en `openclaw config set` puede no estar disponible en todas las versiones; editar el JSON directamente es más confiable.
 
-Debe aparecer la línea:
-```
-agent model: opencode-go/kimi-k2.5
-```
+### Traba: `openclaw models list` se cuelga con systemd de sistema
+
+En 2026.5.7 con el gateway corriendo como servicio de sistema (no de usuario), el CLI de `models list` puede quedarse colgado indefinidamente. Esto es un bug conocido y **no afecta el funcionamiento real del agente**. Workarounds:
+
+- Verificar modelos directamente desde Telegram: `/model opencode-go/kimi-k2.6`
+- Consultar el modelo activo en los logs: `sudo journalctl -u openclaw -f`
+- El agente responde `Model set to X for this session` si el modelo existe en el catálogo
 
 ---
 
-## 6. Capacidades del agente con OpenCode Go
+## 8. Capacidades del agente con OpenCode Go
 
-El agente entiende su propio stack de modelos y puede orquestarlos. Desde Telegram se puede:
+El agente entiende su propio stack de modelos y puede orquestarlos. Desde Telegram:
 
-- **Cambiar de modelo en sesión:** "Cámbiate a MiniMax para esto"
+- **Cambiar de modelo en sesión:** `/model opencode-go/deepseek-v4-pro`
+- **Por alias:** `/model DeepSeek-Pro`
 - **Lanzar subagentes con modelo específico:** "Usa Kimi para revisar este documento largo"
 - **Tareas paralelas:** lanzar subagentes simultáneos con modelos distintos
 
 Uso recomendado por modelo:
-- **MiniMax M2.5** → coding general, mejor benchmark, más requests disponibles
-- **Kimi K2.5** → documentos largos, PDFs, frontend, contexto 256K
-- **GLM-5** → razonamiento matemático y lógica
+- **Kimi K2.6** → modelo primario, documentos largos, PDFs, frontend, 256K contexto, 3x límites
+- **MiniMax M2.7** → coding general, mejor para tareas de programación intensiva
+- **DeepSeek V4 Pro** → coding avanzado, análisis de código complejo
+- **DeepSeek V4 Flash** → tareas rápidas, respuestas cortas, bajo consumo de cuota
+- **GLM-5.1** → razonamiento matemático y lógica
+- **Qwen3.6 Plus** → coding y razonamiento mixto
 
 ---
 
-## 7. Permisos para medios de Jellyfin
+## 9. Permisos para medios de Jellyfin
 
 El servidor también corre **Jellyfin** con medios en `/srv/`. Para que `openclaw_user` pueda operar sobre esas carpetas creé un grupo compartido:
 
@@ -244,7 +343,7 @@ sudo systemctl restart openclaw
 
 ---
 
-## 8. Cheat sheet de comandos
+## 10. Cheat sheet de comandos
 
 ### Gestión del servicio (usuario principal)
 
@@ -257,33 +356,72 @@ sudo systemctl restart openclaw
 
 # Detener el agente
 sudo systemctl stop openclaw
+
+# Estado del servicio
+sudo systemctl status openclaw
 ```
 
-### Interacción local (como openclaw_user)
+### Mantenimiento y updates (como openclaw_user)
 
 ```bash
 sudo su - openclaw_user
 
+# Actualizar OpenClaw
+npm install -g openclaw@latest
+
+# Migrar config tras update (siempre antes de reiniciar)
+openclaw doctor --fix
+
 # Chat local por terminal (TUI)
 openclaw tui
 
-# Ver modelos disponibles por provider
+# Ver estado del gateway
+openclaw gateway status
+
+# Ver modelos disponibles por provider (puede colgarse con systemd de sistema — ver sección 7)
 openclaw models list --provider opencode-go
 
 # Setear modelo primario
-openclaw config set agents.defaults.model.primary "opencode-go/minimax-m2.5"
+openclaw config set agents.defaults.model.primary "opencode-go/kimi-k2.6"
 
 # Ver estado de los canales conectados
 openclaw channels status
 
+# Habilitar/deshabilitar plugins
+openclaw plugins enable tavily
+openclaw plugins disable tavily
+
 # Re-autenticar OpenCode Go si expira
 openclaw onboard --auth-choice opencode-go
+
+# Aprobar pairing de nuevo usuario en Telegram
+openclaw pairing approve telegram [CODIGO]
+```
+
+### Desde Telegram
+
+```
+# Cambiar modelo en sesión
+/model opencode-go/kimi-k2.6
+/model DeepSeek-Pro
+
+# Ver modelo actual
+/model status
+
+# Listar modelos disponibles
+/model list
+
+# Comandos de owner (solo con commands.ownerAllowFrom configurado)
+/config
+/diagnostics
 ```
 
 ---
 
-## 9. Pendientes
+## 11. Pendientes
 
-- [ ] Configurar failover en cadena en `openclaw.json`: MiniMax → Kimi → GLM
-- [ ] Explorar skills útiles: `github`, `nano-pdf`, `summarize`
+- [ ] Configurar failover en cadena en `openclaw.json`: Kimi K2.6 → MiniMax M2.7 → DeepSeek V4 Flash
+- [ ] Explorar skills útiles: `nano-pdf`, `summarize`, `session-logs` (requiere instalar `jq` y `rg`)
 - [ ] Verificar permisos de `/srv/` para `openclaw_user` con el grupo `media`
+- [ ] Navidrome: aplicar configuración de Cloudflare Tunnel si se quiere acceso externo (`navidrome.[mi-dominio].app → http://localhost:4533`)
+- [ ] Hardening SSH en Debian: desactivar `PasswordAuthentication` ahora que la clave está copiada
