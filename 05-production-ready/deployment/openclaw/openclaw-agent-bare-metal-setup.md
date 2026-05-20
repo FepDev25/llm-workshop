@@ -2,7 +2,7 @@
 
 **Entorno:** Debian Trixie — bare-metal Celeron
 **Versión de OpenClaw:** 2026.5.7
-**Modelo de IA:** OpenCode Go (Kimi K2.6 como primario)
+**Modelo de IA:** OpenCode Go (DeepSeek V4 Pro como primario)
 **Interfaz principal:** Telegram
 **Última actualización:** Mayo 2026 — migración desde 2026.3.13
 
@@ -160,17 +160,17 @@ OpenCode Go es una suscripción que da acceso a modelos open source de calidad. 
 
 | Model ref | Modelo | Fortaleza |
 |---|---|---|
-| `opencode-go/kimi-k2.6` | Kimi K2.6 | Frontend, contexto 256K, multimodal, **3x límites vs K2.5** |
+| `opencode-go/deepseek-v4-pro` | DeepSeek V4 Pro | **Primario recomendado.** Coding avanzado, agentes, 80.6% SWE-bench, 1M contexto |
+| `opencode-go/deepseek-v4-flash` | DeepSeek V4 Flash | Coding rápido y económico |
+| `opencode-go/kimi-k2.6` | Kimi K2.6 | 256K contexto, documentos largos, multimodal — ⚠️ bug: thinking mode se activa siempre en subagentes (error 400), no usar como primario |
 | `opencode-go/kimi-k2.5` | Kimi K2.5 | Frontend, contexto 256K, multimodal |
 | `opencode-go/minimax-m2.7` | MiniMax M2.7 | Coding general, última generación |
 | `opencode-go/minimax-m2.5` | MiniMax M2.5 | Coding general (SWE-Bench 80.2%) |
 | `opencode-go/glm-5.1` | GLM-5.1 | Razonamiento matemático, última generación |
 | `opencode-go/glm-5` | GLM-5 | Razonamiento matemático |
-| `opencode-go/deepseek-v4-pro` | DeepSeek V4 Pro | Coding avanzado |
-| `opencode-go/deepseek-v4-flash` | DeepSeek V4 Flash | Coding rápido y económico |
 | `opencode-go/mimo-v2-pro` | MiMo V2 Pro | Razonamiento multimodal |
 | `opencode-go/mimo-v2-omni` | MiMo V2 Omni | Multimodal general |
-| `opencode-go/qwen3.6-plus` | Qwen3.6 Plus | Coding y razonamiento |
+| `opencode-go/qwen3.6-plus` | Qwen3.6 Plus | Coding y razonamiento, buen tool-calling |
 | `opencode-go/qwen3.5-plus` | Qwen3.5 Plus | Coding general |
 
 ### Por qué el `.env` va en `~/.openclaw/.env`
@@ -225,7 +225,7 @@ cat ~/.openclaw/openclaw.json | python3 -m json.tool > /dev/null && echo "JSON v
 ### Setear el modelo primario
 
 ```bash
-openclaw config set agents.defaults.model.primary "opencode-go/kimi-k2.6"
+openclaw config set agents.defaults.model.primary "opencode-go/deepseek-v4-pro"
 exit
 sudo systemctl restart openclaw
 ```
@@ -234,7 +234,7 @@ Verificar en los logs:
 
 ```bash
 sudo journalctl -u openclaw -f
-# Debe aparecer: agent model: opencode-go/kimi-k2.6 (thinking=medium, fast=off)
+# Debe aparecer: agent model: opencode-go/deepseek-v4-pro
 ```
 
 ---
@@ -271,7 +271,7 @@ El wizard abre el flujo OAuth de GitHub:
 **IMPORTANTE:** el onboarding cambia el modelo primario a `github-copilot/claude-opus-4.7` automáticamente. Hay que restaurarlo después:
 
 ```bash
-openclaw config set agents.defaults.model.primary "opencode-go/kimi-k2.6"
+openclaw config set agents.defaults.model.primary "opencode-go/deepseek-v4-pro"
 ```
 
 ### Configurar memory search para usar Copilot
@@ -296,7 +296,7 @@ Si responde sin errores de Gemini o "database is not open", está funcionando. L
 Para que el agente tenga contexto base desde el inicio, guardar un perfil manualmente:
 
 ```
-Guarda esto en memoria: [tu nombre], estudiante de CS último ciclo, usuario de Arch Linux como cliente y Debian Trixie bare-metal como servidor. Corro OpenClaw 2026.5.7 con Kimi K2.6 como modelo primario y Tavily para web search. El servidor es un Celeron con Jellyfin y medios en /srv/.
+Guarda esto en memoria: [tu nombre], estudiante de CS último ciclo, usuario de Arch Linux como cliente y Debian Trixie bare-metal como servidor. Corro OpenClaw 2026.5.7 con DeepSeek V4 Pro como modelo primario y Tavily para web search. El servidor es un Celeron con Jellyfin y medios en /srv/.
 ```
 
 El agente indexa el texto automáticamente y lo recupera en sesiones futuras con `memory_search`.
@@ -368,7 +368,7 @@ sudo systemctl restart openclaw
 
 En 2026.5.7 con el gateway corriendo como servicio de sistema (no de usuario), el CLI de `models list` puede quedarse colgado indefinidamente. Esto es un bug conocido y **no afecta el funcionamiento real del agente**. Workarounds:
 
-- Verificar modelos directamente desde Telegram: `/model opencode-go/kimi-k2.6`
+- Verificar modelos directamente desde Telegram: `/model opencode-go/deepseek-v4-pro`
 - Consultar el modelo activo en los logs: `sudo journalctl -u openclaw -f`
 - El agente responde `Model set to X for this session` si el modelo existe en el catálogo
 
@@ -384,12 +384,12 @@ El agente entiende su propio stack de modelos y puede orquestarlos. Desde Telegr
 - **Tareas paralelas:** lanzar subagentes simultáneos con modelos distintos
 
 Uso recomendado por modelo:
-- **Kimi K2.6** → modelo primario, documentos largos, PDFs, frontend, 256K contexto, 3x límites
-- **MiniMax M2.7** → coding general, mejor para tareas de programación intensiva
-- **DeepSeek V4 Pro** → coding avanzado, análisis de código complejo
+- **DeepSeek V4 Pro** → modelo primario, coding avanzado, tareas agénticas, investigación extensa — mejor benchmark open-weight general (80.6% SWE-bench)
 - **DeepSeek V4 Flash** → tareas rápidas, respuestas cortas, bajo consumo de cuota
+- **Kimi K2.6** → documentos muy largos, PDFs, frontend, 256K contexto — usar explícitamente cuando se necesite; **no usar como primario** (bug conocido: thinking mode se activa siempre en subagentes, causa error 400)
+- **MiniMax M2.7** → coding general intensivo
 - **GLM-5.1** → razonamiento matemático y lógica
-- **Qwen3.6 Plus** → coding y razonamiento mixto
+- **Qwen3.6 Plus** → coding y razonamiento mixto, buen tool-calling
 
 ---
 
@@ -453,7 +453,7 @@ openclaw gateway status
 openclaw models list --provider opencode-go
 
 # Setear modelo primario
-openclaw config set agents.defaults.model.primary "opencode-go/kimi-k2.6"
+openclaw config set agents.defaults.model.primary "opencode-go/deepseek-v4-pro"
 
 # Ver estado de los canales conectados
 openclaw channels status
@@ -469,8 +469,8 @@ openclaw onboard --auth-choice opencode-go
 openclaw onboard --auth-choice github-copilot
 # → Config handling: Use existing values
 # → Channel: Skip for now
-# → Después restaurar modelo primario:
-openclaw config set agents.defaults.model.primary "opencode-go/kimi-k2.6"
+# → Después restaurar modelo primario (el onboarding lo sobreescribe a claude-opus-4.7):
+openclaw config set agents.defaults.model.primary "opencode-go/deepseek-v4-pro"
 
 # Aprobar pairing de nuevo usuario en Telegram
 openclaw pairing approve telegram [CODIGO]
@@ -480,8 +480,8 @@ openclaw pairing approve telegram [CODIGO]
 
 ```
 # Cambiar modelo en sesión
-/model opencode-go/kimi-k2.6
-/model DeepSeek-Pro
+/model opencode-go/deepseek-v4-pro
+/model Kimi-Pro
 
 # Ver modelo actual
 /model status
@@ -498,8 +498,8 @@ openclaw pairing approve telegram [CODIGO]
 
 ## 12. Pendientes
 
-- [ ] Configurar failover en cadena en `openclaw.json`: Kimi K2.6 → MiniMax M2.7 → DeepSeek V4 Flash
+- [ ] Configurar failover en cadena en `openclaw.json`: DeepSeek V4 Pro → MiniMax M2.7 → DeepSeek V4 Flash
 - [ ] Skills: instalar `nano-pdf` (requiere `uv`), `session-logs` (requiere `jq` y `ripgrep`), `summarize`
 - [ ] Verificar permisos de `/srv/` para `openclaw_user` con el grupo `media`
 - [ ] Navidrome: aplicar configuración de Cloudflare Tunnel si se quiere acceso externo (`navidrome.[mi-dominio].app → http://localhost:4533`)
-- [ ] Hardening SSH en Debian: desactivar `PasswordAuthentication` ahora que la clave está copiada
+- [x] Hardening SSH en Debian: clave copiada vía tunnel (`ssh-copy-id` con ProxyCommand), acceso sin contraseña verificado desde Arch
